@@ -1,0 +1,133 @@
+"""Resumable, batched ingestion of one offline Wikipedia article."""
+
+import sys
+from libzim.reader import Archive
+from bs4 import BeautifulSoup
+
+from test_chunking import (
+    ZIM_PATH,
+    MAX_CHARS,
+    NON_PROSE_SELECTORS,
+    article_html,
+    remove_excluded_sections,
+    eligible_records,
+    make_chunks,
+)
+from batch_embeddings import embed_batch, BATCH_SIZE
+from qdrant_batch import upload_batch, TEST_COLLECTION
+from qdrant_cleanup import remove_stale_chunks
+import ingestion_progress as progress
+
+
+def ingest_article(title):
+    print(f"Opening Wikipedia article: {title}")
+
+    archive = Archive(ZIM_PATH)
+    entry = archive.get_entry_by_title(title)
+
+    while entry.is_redirect:
+        entry = entry.get_redirect_entry()
+
+    article_path = entry.path
+
+    progress.register_article(article_path, title)
+
+    if progress.is_completed(article_path):
+        print(f"SKIPPED: {title} already completed")
+        return "skipped"
+
+    progress.start_article(article_path)
+
+    try:
+        soup = BeautifulSoup(article_html(archive, title), "lxml")
+        content = soup.select_one(".mw-parser-output")
+
+        if content is None:
+            raise RuntimeError("Article content not found")
+
+        remove_excluded_sections(content)
+
+        for node in content.select(NON_PROSE_SELECTORS):
+            node.decompose()
+
+        records = eligible_records(content)
+        chunks = make_chunks(records, MAX_CHARS)
+
+        original_words = " ".join(
+            record["text"] for record in records
+        ).split()
+
+        chunk_words = " ".join(
+            str(chunk["text"]) for chunk in chunks
+        ).split()
+
+        if original_words != chunk_words:
+            raise RuntimeError("Content preservation check failed")
+
+        print(f"Article: {title}")
+        print(f"Chunks: {len(chunks)}")
+
+        if not chunks:
+            raise RuntimeError("Article produced no chunks")
+
+        total_uploaded = 0
+
+        for start in range(0, len(chunks), BATCH_SIZE):
+            batch = chunks[start:start + BATCH_SIZE]
+
+            indexed_chunks = [
+                {
+                    "chunk_index": start + offset,
+                    "section": chunk["section"],
+                    "text": chunk["text"],
+                }
+                for offset, chunk in enumerate(batch)
+            ]
+
+            vectors = embed_batch(
+                [chunk["text"] for chunk in indexed_chunks]
+            )
+
+            uploaded = upload_batch(
+                title,
+                article_path,
+                indexed_chunks,
+                vectors,
+                collection=TEST_COLLECTION,
+            )
+
+            total_uploaded += uploaded
+
+            print(
+                f"Uploaded {total_uploaded}/{len(chunks)} chunks"
+            )
+
+        # Remove obsolete chunks only after all new chunks
+        # have been successfully uploaded.
+        stale_removed = remove_stale_chunks(
+            article_path,
+            len(chunks),
+            TEST_COLLECTION,
+        )
+
+        print(f"Stale chunks removed: {stale_removed}")
+
+        progress.complete_article(article_path, len(chunks))
+        print("INGESTION COMPLETE")        
+        print("Article:", title)
+        print("Chunks uploaded:", total_uploaded)
+        print("Collection:", TEST_COLLECTION)
+        return "completed"
+
+    except Exception as error:
+        progress.fail_article(article_path, error)
+        print(f"INGESTION FAILED: {error}")
+        raise
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print('Usage: python ingest_article.py "Article Title"')
+        raise SystemExit(2)
+
+    ingest_article(sys.argv[1])
