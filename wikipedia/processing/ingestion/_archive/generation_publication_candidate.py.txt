@@ -1,0 +1,73 @@
+"""Candidate implementation of atomic generation publication."""
+
+import sqlite3
+
+
+def publish_generation(
+    connection: sqlite3.Connection,
+    article_path: str,
+    generation_id: str,
+    configuration_id: str,
+) -> None:
+    """Atomically publish an already validated generation."""
+
+    for name, value in (
+        ("article_path", article_path),
+        ("generation_id", generation_id),
+        ("configuration_id", configuration_id),
+    ):
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"A nonempty {name} is required")
+
+    if connection.in_transaction:
+        raise RuntimeError(
+            "Publication requires a connection without an active transaction"
+        )
+
+    connection.execute("BEGIN IMMEDIATE")
+
+    try:
+        record = connection.execute("""
+            SELECT status, chunk_count
+            FROM article_generations
+            WHERE configuration_id = ?
+              AND article_path = ?
+              AND generation_id = ?
+        """, (
+            configuration_id,
+            article_path,
+            generation_id,
+        )).fetchone()
+
+        if (
+            record is None
+            or record[0] != "validated"
+            or record[1] <= 0
+        ):
+            raise RuntimeError(
+                "Generation does not exist or is not publishable"
+            )
+
+        connection.execute("""
+            INSERT INTO published_generations (
+                configuration_id,
+                article_path,
+                generation_id
+            )
+            VALUES (?, ?, ?)
+            ON CONFLICT(configuration_id, article_path)
+            DO UPDATE SET
+                generation_id = excluded.generation_id,
+                published_at = CURRENT_TIMESTAMP
+        """, (
+            configuration_id,
+            article_path,
+            generation_id,
+        ))
+
+        connection.execute("COMMIT")
+
+    except BaseException:
+        if connection.in_transaction:
+            connection.execute("ROLLBACK")
+        raise

@@ -1,0 +1,63 @@
+"""Deterministic configuration identification for Wikipedia ingestion."""
+
+import hashlib
+import json
+
+import batch_embeddings
+import enumerate_articles
+import qdrant_batch
+from ingestion_target import ACTIVE_COLLECTION
+import test_chunking
+
+
+def source_hash(module):
+    """Hash the source file of a module."""
+    with open(module.__file__, "rb") as file:
+        return hashlib.sha256(file.read()).hexdigest()
+
+
+def configuration_details():
+    """Collect settings affecting Wikipedia ingestion."""
+
+    zim_path = test_chunking.ZIM_PATH
+    zim_stat = zim_path.stat()
+
+    return {
+        "zim_filename": zim_path.name,
+        "zim_size_bytes": zim_stat.st_size,
+        "collection": ACTIVE_COLLECTION,
+        "embedding_model": batch_embeddings.EMBEDDING_MODEL,
+        "vector_dimensions": batch_embeddings.VECTOR_DIMENSIONS,
+        "chunk_max_chars": test_chunking.MAX_CHARS,
+        "chunking_source_hash": source_hash(test_chunking),
+        "embedding_source_hash": source_hash(batch_embeddings),
+        "qdrant_upload_source_hash": source_hash(qdrant_batch),
+        "vector_schema_version": "wikipedia-v4",
+        "enumeration_method": "iter_by_title",
+        "enumeration_source_hash": source_hash(enumerate_articles),
+    }
+
+
+def configuration_id():
+    """Generate a stable SHA-256 fingerprint."""
+
+    details = configuration_details()
+
+    serialized = json.dumps(
+        details,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+    return hashlib.sha256(serialized).hexdigest()
+
+
+if __name__ == "__main__":
+    print("INGESTION CONFIGURATION")
+    print()
+
+    for key, value in configuration_details().items():
+        print(f"{key}: {value}")
+
+    print()
+    print("Configuration ID:", configuration_id())
