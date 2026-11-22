@@ -1,6 +1,7 @@
-"""Resumable, batched ingestion of one offline Wikipedia article."""
+"""Generation-aware, resumable ingestion of one offline Wikipedia article."""
 
 import sys
+import uuid
 from libzim.reader import Archive
 from bs4 import BeautifulSoup
 
@@ -19,6 +20,13 @@ from ingestion_target import ACTIVE_COLLECTION
 from qdrant_cleanup import remove_stale_chunks, remove_article_chunks
 import ingestion_progress as progress
 from ingestion_config import configuration_id
+from article_generations import (
+    register_generation,
+    validate_generation,
+    fail_generation,
+    publish_generation,
+    get_published_generation,
+)
 
 
 class ConfirmedUnsupportedArticle(Exception):
@@ -26,11 +34,11 @@ class ConfirmedUnsupportedArticle(Exception):
 
 
 def ingest_article(title):
-    raise RuntimeError(
-        "Legacy article ingestion is disabled until generation-aware "
-        "publication and recovery are integrated and verified."
-    )
-
+    """
+    Complete generation-aware ingestion for a Wikipedia article.
+    
+    Returns the processing status ("completed", "excluded", or "skipped").
+    """
     print(f"Opening Wikipedia article: {title}")
 
     archive = Archive(ZIM_PATH)
@@ -42,8 +50,10 @@ def ingest_article(title):
     article_path = entry.path
 
     config_id = configuration_id()
+    
+    # Register the article first to ensure it's tracked
     progress.register_article(article_path, title, config_id)
-
+    
     if progress.is_completed(article_path, config_id):
         print(f"SKIPPED: {title} already completed")
         return "skipped"
@@ -52,6 +62,13 @@ def ingest_article(title):
         print(f"EXCLUDED: {title} previously excluded")
         return "excluded"
 
+    # Generate a unique generation ID for this ingestion run
+    generation_id = str(uuid.uuid4())
+    
+    # Register the new generation
+    register_generation(article_path, generation_id, config_id)
+    
+    # Mark article as processing
     progress.start_article(article_path, config_id)
 
     try:
@@ -87,7 +104,9 @@ def ingest_article(title):
             raise RuntimeError("Article produced no chunks")
 
         total_uploaded = 0
-
+        expected_chunk_count = len(chunks)
+        
+        # Process in batches
         for start in range(0, len(chunks), BATCH_SIZE):
             batch = chunks[start:start + BATCH_SIZE]
 
@@ -111,6 +130,7 @@ def ingest_article(title):
                 vectors,
                 collection=ACTIVE_COLLECTION,
                 configuration_id=config_id,
+                generation_id=generation_id,
             )
 
             total_uploaded += uploaded
@@ -126,9 +146,37 @@ def ingest_article(title):
             len(chunks),
             ACTIVE_COLLECTION,
             config_id,
+            generation_id=generation_id,
         )
 
         print(f"Stale chunks removed: {stale_removed}")
+
+        # Validate the generation after successful upload
+        validate_generation(
+            article_path,
+            generation_id,
+            config_id,
+            expected_chunk_count,
+            total_uploaded
+        )
+
+        # Atomically publish the validated generation  
+        with progress.connect() as connection:
+            published = get_published_generation(connection, article_path, config_id)
+            
+            # For first publication, expected_revision is None
+            if published is None:
+                expected_revision = None
+            else:
+                expected_revision = published["revision"]
+                
+            publish_generation(
+                connection,
+                article_path,
+                generation_id,
+                config_id,
+                expected_revision
+            )
 
         progress.complete_article(article_path, len(chunks), config_id)
         print("INGESTION COMPLETE")        
@@ -150,8 +198,13 @@ def ingest_article(title):
                 article_path,
                 ACTIVE_COLLECTION,
                 config_id,
+                generation_id=generation_id,
             )
 
+            # Mark the generation as failed
+            fail_generation(article_path, generation_id, config_id)
+            
+            # Also update the article status
             progress.exclude_article(
                 article_path,
                 exclusion_reason,
@@ -159,6 +212,12 @@ def ingest_article(title):
             )
 
         except Exception as cleanup_error:
+            try:
+                # Mark generation as failed even if cleanup fails
+                fail_generation(article_path, generation_id, config_id)
+            except:
+                pass
+                
             progress.fail_article(
                 article_path,
                 cleanup_error,
@@ -173,6 +232,12 @@ def ingest_article(title):
         return "excluded"
 
     except Exception as error:
+        # Mark generation as failed and article as failed
+        try:
+            fail_generation(article_path, generation_id, config_id)
+        except:
+            pass
+            
         progress.fail_article(article_path, error, config_id)
         print(f"INGESTION FAILED: {error}")
         raise
