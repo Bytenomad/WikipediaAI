@@ -104,20 +104,20 @@ def import_category_batch(category_name, batch_size=10):
                     logger.error(f"Error processing article '{article_title}': {e}")
                     continue
             
-            # Upload the batch to Qdrant
+            # Upload the batch to Qdrant - one article at a time
             if batch_data:
                 try:
-                    # Prepare the data for upload with proper parameters
-                    upload_batch(
-                        article_title=None,  # We're processing multiple articles
-                        article_path=None,   # Not needed for batch uploads
-                        chunks=[chunk for article in batch_data for chunk in article['chunks']],
-                        vectors=None,        # Vectors are generated during upload
-                        collection=None,     # Will use default collection
-                        configuration_id=configuration_id,
-                        generation_id=None,  # Will be set automatically
-                        images=[image for article in batch_data for image in article['images']]
-                    )
+                    for article in batch_data:
+                        upload_batch(
+                            article_title=article['title'],
+                            article_path=article['title'],  # Using title as path for single article
+                            chunks=article['chunks'],
+                            vectors=None,        # Vectors are generated during upload
+                            collection=None,     # Will use default collection
+                            configuration_id=configuration_id,
+                            generation_id=None,  # Will be set automatically
+                            images=article['images']
+                        )
                     logger.info(f"Successfully uploaded batch {i//batch_size + 1}")
                 except Exception as e:
                     logger.error(f"Error uploading batch {i//batch_size + 1}: {e}")

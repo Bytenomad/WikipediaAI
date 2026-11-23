@@ -24,6 +24,8 @@ from wikipedia_ai.ingestion.chunking import (
 )
 from wikipedia_ai.ingestion.qdrant_batch import upload_batch
 from wikipedia_ai.ingestion.config import configuration_id
+from wikipedia_ai.ingestion.target import ACTIVE_COLLECTION, TEST_COLLECTION
+from wikipedia_ai.ingestion.batch_embeddings import embed_batch
 import json
 
 # Import image extraction functionality
@@ -118,32 +120,43 @@ def import_all_us_history_categories(batch_size=10):
                     logger.error(f"Error processing article '{article_title}': {e}")
                     continue
             
-            # Upload the batch to Qdrant
+            # Upload the batch to Qdrant - one article at a time
             if batch_data:
                 try:
-                    # Prepare the data for upload with proper parameters
-                    # Flatten chunks and images from all articles in this batch
-                    all_chunks = []
-                    all_images = []
-                    all_titles = []
-                    
                     for article in batch_data:
-                        all_chunks.extend(article['chunks'])
-                        all_images.extend(article['images'])
-                        all_titles.append(article['title'])
-                    
-                    # Upload the batch with all articles together
-                    upload_batch(
-                        chunks=all_chunks,
-                        images=all_images,
-                        configuration_id=configuration_id,
-                        collection=None,  # Will use default collection
-                        generation_id=None,  # Will be set automatically
-                        article_titles=all_titles  # Add article titles to help with identification
-                    )
+                        # Generate embeddings for chunks
+                        vectors = embed_batch([chunk['text'] for chunk in article['chunks']])
+                        
+                        logger.debug(f"About to upload article: {article['title']}")
+                        logger.debug(f"Article title type: {type(article['title'])}")
+                        logger.debug(f"Article chunks length: {len(article['chunks'])}")
+                        logger.debug(f"Vectors length: {len(vectors)}")
+                        
+                        # Process chunks in smaller batches to avoid exceeding BATCH_SIZE limit
+                        CHUNK_BATCH_SIZE = 32
+                        article_images = article['images']  # Store images once
+                        for i in range(0, len(article['chunks']), CHUNK_BATCH_SIZE):
+                            batch_chunks = article['chunks'][i:i + CHUNK_BATCH_SIZE]
+                            batch_vectors = vectors[i:i + CHUNK_BATCH_SIZE]
+                            
+                            # Ensure we have the same number of chunks and vectors
+                            if len(batch_chunks) != len(batch_vectors):
+                                raise ValueError("Mismatch between chunks and vectors in batch")
+                                
+                            upload_batch(
+                                article_title=article['title'],
+                                article_path=str(article['title']),  # Using title as path for single article, ensure it's a string
+                                chunks=batch_chunks,
+                                vectors=batch_vectors,        # Pass generated vectors
+                                images=article_images if i == 0 else None,  # Only pass images once
+                                configuration_id=configuration_id(),  # Call the function to get the ID
+                                collection=TEST_COLLECTION,  # Use TEST_COLLECTION for import
+                                generation_id=None,  # Will be set automatically
+                            )
                     logger.info(f"Successfully uploaded batch {i//batch_size + 1}")
                 except Exception as e:
                     logger.error(f"Error uploading batch {i//batch_size + 1}: {e}")
+                    raise  # Re-raise the exception to see full traceback
             
         logger.info("Completed import of all US history categories")
         
@@ -167,7 +180,7 @@ def main():
         logger.info("")
         logger.info("Important: Set ZIM_PATH environment variable to point to your Wikipedia ZIM file")
         return
-        
+         
     batch_size = 10
     if len(sys.argv) > 1:
         try:

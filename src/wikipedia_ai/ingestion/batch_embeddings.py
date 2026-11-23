@@ -1,7 +1,9 @@
 """Generate embeddings for batches of Wikipedia text using local Ollama."""
 
+
 import time
 import requests
+import json
 
 from pathlib import Path
 
@@ -14,25 +16,38 @@ BATCH_SIZE = 32
 def embed_batch(texts):
     """Generate embeddings for a batch of texts."""
     
-    # Make a call to local Ollama embedding API 
-    response = requests.post(
-        "http://localhost:11434/api/embeddings",
-        json={
-            "model": EMBEDDING_MODEL,
-            "prompt": "\n\n".join(texts)
-        }
-    )
+    # For Ollama API, we need to make separate calls for each text since 
+    # it doesn't support true batch processing in a single call
+    embeddings = []
     
-    if response.status_code != 200:
-        raise RuntimeError(f"Ollama embedding API error: {response.text}")
+    for text in texts:
+        # Make a call to local Ollama embedding API 
+        response = requests.post(
+            "http://localhost:11434/api/embeddings",
+            json={
+                "model": EMBEDDING_MODEL,
+                "prompt": text
+            }
+        )
         
-    data = response.json()
+        if response.status_code != 200:
+            raise RuntimeError(f"Ollama embedding API error: {response.text}")
+            
+        data = response.json()
+        
+        # Handle Ollama API response correctly
+        try:
+            if 'embedding' in data:
+                # Single embedding returned in 'embedding' key  
+                embeddings.append(data['embedding'])
+            else:
+                raise ValueError(f"Unexpected Ollama API response format: {json.dumps(data, indent=2)}")
+        except Exception as e:
+            print(f"DEBUG - Error processing response: {e}")
+            print(f"DEBUG - Response data: {data}")
+            raise
     
-    # Note: For multiple texts, Ollama returns a list of embeddings
-    # This may need to be adjusted based on the exact Ollama API response format
-    return [
-        embedding for embedding in data['embeddings']
-    ]
+    return embeddings
 
 
 if __name__ == "__main__":
