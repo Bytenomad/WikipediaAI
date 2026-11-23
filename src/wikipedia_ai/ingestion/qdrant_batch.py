@@ -1,6 +1,12 @@
 """Incremental Qdrant uploads for offline Wikipedia ingestion."""
 
 import uuid
+import sys
+import os
+
+# Add the parent directory to Python path so modules can be imported properly
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, parent_dir)
 
 from qdrant_client import QdrantClient, models
 from urllib.parse import quote
@@ -12,9 +18,10 @@ BATCH_SIZE = 32
 
 def upload_batch(article_title, article_path, chunks, vectors,
                  collection=TEST_COLLECTION, configuration_id=None,
-                 generation_id=None):
+                 generation_id=None, images=None):
     """Upload one batch of article chunks to Qdrant."""
-
+    
+    # Validate inputs
     validate_ingestion_collection(collection)
 
     if collection == ACTIVE_COLLECTION and (
@@ -40,7 +47,7 @@ def upload_batch(article_title, article_path, chunks, vectors,
 
     points = []
 
-    for chunk, vector in zip(chunks, vectors):
+    for i, (chunk, vector) in enumerate(zip(chunks, vectors)):
         if len(vector) != VECTOR_DIMENSIONS:
             raise ValueError("Incorrect embedding dimensions")
 
@@ -74,6 +81,10 @@ def upload_batch(article_title, article_path, chunks, vectors,
             ),
         }
 
+        # Add image information if provided
+        if images and i < len(images) and images[i]:
+            payload["images"] = images[i] if isinstance(images[i], list) else [images[i]]
+        
         if generation_id is not None:
             payload["generation_id"] = generation_id
 

@@ -155,11 +155,17 @@ def make_chunks(records: Iterable[dict[str, str]], maximum: int) -> list[dict[st
     current_section: str | None = None
     current_parts: list[str] = []
     current_length = 0
+    chunk_index = 0
 
     def flush() -> None:
-        nonlocal current_section, current_parts, current_length
+        nonlocal current_section, current_parts, current_length, chunk_index
         if current_parts:
-            chunks.append({"section": current_section, "text": "\n\n".join(current_parts)})
+            chunks.append({
+                "section": current_section, 
+                "text": "\n\n".join(current_parts),
+                "chunk_index": chunk_index
+            })
+            chunk_index += 1
         current_section, current_parts, current_length = None, [], 0
 
     for record in records:
@@ -170,7 +176,12 @@ def make_chunks(records: Iterable[dict[str, str]], maximum: int) -> list[dict[st
         if len(paragraph) > maximum:
             flush()
             for part in split_at_word_boundaries(paragraph, maximum):
-                chunks.append({"section": section, "text": part})
+                chunks.append({
+                    "section": section, 
+                    "text": part,
+                    "chunk_index": chunk_index
+                })
+                chunk_index += 1
             continue
         separator = 0 if not current_parts else 2  # two newlines
         if current_parts and current_length + separator + len(paragraph) > maximum:
@@ -193,6 +204,54 @@ def article_html(archive: Archive, title: str) -> str:
         raise TypeError(f"Expected HTML for {title!r}, got {item.mimetype!r}")
     return bytes(item.content).decode("utf-8", errors="replace")
 
+
+def process_article_with_images(title: str) -> dict[str, object]:
+    """
+    Process an entire Wikipedia article into chunks with image information
+    
+    Args:
+        title (str): Article title
+        
+    Returns:
+        Dict with article data including chunks and metadata
+    """
+    # Get the ZIM archive
+    archive = Archive(ZIM_PATH)
+    
+    # Get HTML content
+    html_content = article_html(archive, title)
+    
+    if not html_content:
+        return {"error": f"Could not retrieve article {title}"}
+    
+    # Clean and parse HTML
+    soup = BeautifulSoup(html_content, 'lxml')
+    
+    # Get the main content area
+    content_area = soup.select_one('.mw-parser-output')
+    
+    if not content_area:
+        return {"error": "Could not find main content area"}
+    
+    # Extract text records
+    records = eligible_records(content_area)
+    
+    # Create chunks
+    chunks = make_chunks(records, MAX_CHARS)
+    
+    # Extract image information
+    from .image_extraction import extract_images_from_article
+    images = extract_images_from_article(html_content, "https://en.wikipedia.org")
+    
+    return {
+        "title": title,
+        "chunks": chunks,
+        "total_records": len(records),
+        "total_chunks": len(chunks),
+        "content_preview": chunks[0]["text"] if chunks else "",
+        "images": images,
+        "image_count": len(images)
+    }
 
 def main() -> int:
     # Windows PowerShell can use a legacy code page that cannot print all

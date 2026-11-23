@@ -1,0 +1,15 @@
+FROM ghcr.io/open-webui/open-webui:main
+
+# Create directories with proper permissions
+RUN mkdir -p /app/vector_db /app/uploads && \
+    chmod 755 /app/vector_db /app/uploads
+
+# Copy the secret key and set permissions
+COPY ./open-webui/.webui_secret_key /app/.webui_secret_key
+RUN chmod 600 /app/.webui_secret_key
+
+# Ensure the container runs as root to avoid permission issues
+USER root
+
+# Set working directory
+WORKDIR /app

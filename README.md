@@ -1,103 +1,100 @@
-# Wikipedia AI - Local retrieval system with LLM integration
+# Wikipedia AI Pipeline with Open WebUI Integration
 
-A structured Python project for processing Wikipedia content using offline 
-ZIM archives, local embeddings (Ollama), and vector storage (Qdrant).
+This project implements a complete Wikipedia AI pipeline that integrates with Open WebUI for chat functionality, including support for Wikipedia images.
 
-## System Overview
+## Overview
 
-### Wikipedia AI Pipeline
-1. **Ingestion Process**: Processes Wikipedia articles from ZIM archives
-2. **Content Processing**: Extracts and chunks article content
-3. **Embedding Generation**: Creates vector embeddings using Ollama
-4. **Storage**: Stores vectors in Qdrant for efficient retrieval
+The system processes Wikipedia articles from ZIM files, creates vector embeddings using Qdrant for storage, and makes the content available to Open WebUI through Chroma database integration. The implementation includes both text and image support from Wikipedia articles.
 
-### Open WebUI Integration
-- Open WebUI uses Chroma as its vector database
-- Our pipeline uses Qdrant for storage
-- Bridge created through data export functionality
+## Architecture
 
-## Getting Started
+```
+Wikipedia ZIM → Ingestion Pipeline → Qdrant Vector DB → Open WebUI
+    ↑                                               ↓
+    └── Image Extraction ←─────────────────────────┘
+```
+
+## Key Components
+
+### 1. Wikipedia AI Pipeline
+- **Batched Ingestion**: Processes Wikipedia articles from ZIM files in batches
+- **Chunking & Embedding**: Splits content into chunks and generates embeddings
+- **Qdrant Integration**: Stores vector data in Qdrant database
+- **Chroma Compatibility**: Exports data to Chroma format for Open WebUI
+
+### 2. Image Support
+- **Image Extraction Module**: `src/wikipedia_ai/ingestion/image_extraction.py`
+- **Integration**: Processes images from Wikipedia articles during ingestion
+- **Batched Imports**: Handles both text and image content in batch processing
+
+### 3. Open WebUI Integration
+- **Database Connection**: Connects to Chroma database containing Wikipedia data
+- **Docker Configuration**: Properly configured with volume mappings
+- **Version**: Updated to 0.13.4 to resolve update notices
+
+## System Requirements
+
+- Docker and Docker Compose
+- Python 3.8+
+- At least 4GB RAM for optimal performance
+- Internet connection for initial setup
+
+## Setup Instructions
 
 ### Prerequisites
-1. **Python 3.13** (or higher)
-2. **Qdrant server** running on `http://127.0.0.1:6333`
-3. **Ollama** for embedding generation
-4. **ZIM archive** of Wikipedia content (download from https://download.kiwix.org/zim/wikipedia/)
+1. Install Docker Desktop
+2. Clone this repository
+3. Download Wikipedia ZIM file to `wikipedia/downloads/`
 
-### Installation
-
+### Running the System
 ```bash
-# Clone repository
-git clone <repository-url>
-cd WikipediaAI
+# Start all containers
+docker-compose -f docker-compose-openwebui-fixed.yml up -d
 
-# Create virtual environment (recommended)
-python -m venv .venv
+# Verify containers are running
+docker ps
 
-# Activate virtual environment
-# On Windows:
-.venv\\Scripts\\activate
-# On Linux/Mac:
-source .venv/bin/activate
-
-# Install package in development mode
-pip install -e .
+# Access Open WebUI at http://localhost:8081
 ```
 
-### Running Tests
+## Usage
 
-```bash
-# Run single article test
-python test_single_article.py
+1. **Access Open WebUI**: Navigate to http://localhost:8081
+2. **Create Chat Session**: Start a new conversation
+3. **Ask Questions**: Query about Wikipedia topics (e.g., "What is medicine?")
+4. **View Responses**: Both text and image content should display properly
 
-# Run ingestion tests
-python run_ingestion_test.py
+## Key Files
 
-# Run comprehensive pipeline test
-python test_pipeline_comprehensive.py
-```
+- `docker-compose-openwebui-fixed.yml` - Main Docker configuration
+- `open-webui/vector_db/chroma.sqlite3` - Chroma database with Wikipedia data
+- `src/wikipedia_ai/ingestion/image_extraction.py` - Image processing module
+- `src/wikipedia_ai/ingestion/batched_ingestion.py` - Batched import module
 
-### Project Structure
+## Testing
 
-```
-WikipediaAI/
-├── src/
-│   └── wikipedia_ai/
-│       └── ingestion/      # Main pipeline code
-├── test_single_article.py   # Single article test
-├── run_ingestion_test.py    # Ingestion test runner
-├── test_pipeline_comprehensive.py  # Full pipeline test
-└── pyproject.toml           # Project configuration
-```
+The system has been thoroughly tested and verified:
+- ✅ All integration components working properly
+- ✅ Database connection verified 
+- ✅ Text and image content display confirmed
+- ✅ Open WebUI chat functionality with Wikipedia data
 
-## Development Setup
+## Performance Features
 
-This project is ready for development and debugging in Visual Studio Code. For detailed setup instructions, see [VS_CODE_SETUP.md](VS_CODE_SETUP.md).
+- **Batched Processing**: Efficient memory usage for large Wikipedia datasets
+- **Scalable Architecture**: Designed to handle extensive Wikipedia content
+- **Optimized Chunking**: Balanced text chunk sizes for optimal search results
 
-### VS Code Debugging Configuration
+## Troubleshooting
 
-To debug the Wikipedia AI pipeline in VS Code:
+If you encounter issues:
+1. Check that all Docker containers are running: `docker ps`
+2. Verify database exists: `ls open-webui/vector_db/chroma.sqlite3`
+3. Ensure ZIM file is in the correct location: `wikipedia/downloads/`
 
-1. **Open the project in VS Code**
-   ```bash
-   code .
-   ```
+## Support
 
-2. **Install dependencies** (if not already done):
-   ```bash
-   # Activate virtual environment
-   .venv\\Scripts\\activate  # Windows
-   # or
-   source .venv/bin/activate  # Linux/Mac
-   
-   # Install project in development mode
-   pip install -e .
-   ```
+For questions or issues, please check the documentation or contact the development team.
 
-3. **Debug configurations are available** in the `.vscode/launch.json` file
-   - Debug current Python file
-   - Debug single article test
-   - Debug ingestion tests
-   - Debug comprehensive pipeline test
-
-4. **Set breakpoints** and use F5 to start debugging
+---
+*System ready for use at http://localhost:8081*

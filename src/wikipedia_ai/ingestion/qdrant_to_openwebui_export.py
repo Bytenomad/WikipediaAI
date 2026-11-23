@@ -80,10 +80,10 @@ def save_export_to_file(documents: List[Dict[str, Any]], filename: str = "qdrant
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(documents, f, indent=2, ensure_ascii=False)
         
-        print(f"✓ Saved export to {filename}")
+        print(f"[SUCCESS] Saved export to {filename}")
         
     except Exception as e:
-        print(f"✗ Error saving export file: {e}")
+        print(f"[ERROR] Error saving export file: {e}")
 
 def main():
     """Main function to run the Qdrant export test."""
@@ -102,7 +102,8 @@ def main():
             print(f"Document {i+1}:")
             print(f"  ID: {doc['id']}")
             print(f"  Title: {doc['metadata']['title']}")
-            print(f"  Content preview: {doc['content'][:100]}...")
+            content_preview = doc['content'][:100] if len(doc['content']) > 100 else doc['content']
+            print(f"  Content preview: {content_preview.encode('ascii', 'ignore').decode('ascii')}...")
             print()
         
         return 0

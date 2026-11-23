@@ -11,7 +11,7 @@ from typing import List, Dict, Any
 # Add the current directory to the Python path
 sys.path.insert(0, os.path.dirname(__file__))
 
-from qdrant_batch import get_client
+from qdrant_batch import QdrantClient
 from config import configuration_id
 
 def demonstrate_integration():
@@ -23,13 +23,13 @@ def demonstrate_integration():
     try:
         # 1. Connect to Qdrant
         print("\n1. Connecting to Qdrant...")
-        client = get_client()
-        print("✓ Connected to Qdrant successfully")
+        client = QdrantClient(url="http://127.0.0.1:6333")
+        print("SUCCESS: Connected to Qdrant successfully")
         
         # 2. Get configuration info
         print("\n2. Getting configuration...")
         config_id = configuration_id()
-        print(f"✓ Configuration ID: {config_id}")
+        print(f"SUCCESS: Configuration ID: {config_id}")
         
         # 3. List collections
         print("\n3. Listing Qdrant collections...")
@@ -48,9 +48,9 @@ def demonstrate_integration():
         
         if main_collection:
             documents = export_from_qdrant(main_collection)
-            print(f"✓ Successfully exported {len(documents)} documents")
+            print(f"SUCCESS: Successfully exported {len(documents)} documents")
         else:
-            print("⚠ No 'wikipedia_articles' collection found - this is expected if no data ingested yet")
+            print("WARNING: No 'wikipedia_articles' collection found - this is expected if no data ingested yet")
         
         print("\n=== Integration Demo Complete ===")
         print("This demonstrates how Qdrant data can be accessed and converted for Open WebUI.")
@@ -59,7 +59,7 @@ def demonstrate_integration():
         return True
         
     except Exception as e:
-        print(f"✗ Error in integration demo: {e}")
+        print(f"ERROR: Error in integration demo: {e}")
         return False
 
 def main():
@@ -67,10 +67,10 @@ def main():
     success = demonstrate_integration()
     
     if success:
-        print("\n✓ Integration demonstration completed successfully!")
+        print("\nSUCCESS: Integration demonstration completed successfully!")
         return 0
     else:
-        print("\n✗ Integration demonstration failed!")
+        print("\nERROR: Integration demonstration failed!")
         return 1
 
 if __name__ == "__main__":
