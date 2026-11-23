@@ -9,8 +9,8 @@ This guide explains how to use the generation-aware Wikipedia AI ingestion pipel
 Before using the pipeline, ensure you have:
 
 1. **Python 3.13+** installed
-2. **Ollama** running locally with the `nomic-embed-text` model
-3. **Qdrant server** running locally 
+2. **Ollama** running locally with the `nomic-embed-text` model (https://ollama.com/download)
+3. **Qdrant server** running locally on port 6334 
 4. **Wikipedia ZIM archive** (e.g., `wikipedia_en_all_maxi_2026-08.zim`)
 5. **Required Python packages** installed via: `pip install -e .`
 
@@ -18,7 +18,7 @@ Before using the pipeline, ensure you have:
 
 1. **Start Ollama and Qdrant services**:
    ```bash
-   # Start Ollama (ensure nomic-embed-text is pulled)
+   # Start Ollama service (ensure nomic-embed-text is pulled)
    ollama pull nomic-embed-text
    
    # Start Qdrant (typically via Docker or local installation)  
@@ -87,9 +87,14 @@ python ingest_article.py "Machine Learning"
 
 ### Bulk Processing (not implemented yet)
 The system is designed to work with enumeration scripts that can process multiple articles.
-
 ### Monitoring Progress
+
 Check `wikipedia/processing/ingestion/ingestion_progress.db` for tracking information.
+
+### Qdrant Connection
+
+The system connects to Qdrant running on port 7333. You can access the Qdrant UI at:
+http://localhost:7333
 
 ## Troubleshooting
 
@@ -100,7 +105,7 @@ Check `wikipedia/processing/ingestion/ingestion_progress.db` for tracking inform
    - Confirm `nomic-embed-text` model is pulled: `ollama pull nomic-embed-text`
 
 2. **Qdrant connection issues**:
-   - Verify Qdrant server is accessible at `localhost:6333`
+   - Verify Qdrant server is accessible at `localhost:6334`
    - Check that the correct collection names are defined
 
 3. **Missing database files**:

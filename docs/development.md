@@ -5,7 +5,7 @@
 ### Prerequisites
 
 1. Python 3.13+
-2. Ollama installed and running local embedding model
+2. Ollama installed and running locally (https://ollama.com/download)
 3. Qdrant server running locally 
 4. Required dependencies (see `requirements-recovered.txt`)
 

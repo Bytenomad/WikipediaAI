@@ -9,7 +9,7 @@ You now have a complete generation-aware Wikipedia AI ingestion pipeline ready f
 Based on your setup, all dependencies should be properly installed:
 
 1. **Ollama** with `nomic-embed-text` model (confirmed working)
-2. **Qdrant** running on remote host 192.168.2.96 
+2. **Qdrant** running locally or remotely on port 6334
 3. **Python 3.13+** environment
 4. **Wikipedia ZIM archive** (needs to be configured)
 

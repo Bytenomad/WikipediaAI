@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import uuid
 from urllib.parse import quote
@@ -23,9 +24,9 @@ from test_chunking import (
     make_chunks,
 )
 
-OLLAMA_URL = "http://127.0.0.1:11434/api/embed"
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434/api/embed")
 EMBEDDING_MODEL = "nomic-embed-text"
-QDRANT_URL = "http://127.0.0.1:6333"
+QDRANT_URL = os.environ.get("QDRANT_URL", "http://127.0.0.1:6333")
 COLLECTION = "wikipedia_articles_v2"
 
 KIWIX_BASE_URL = (

@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  wikipedia-ai:
+    build: .
+    container_name: wikipedia-ai
+    volumes:
+      - ./wikipedia/downloads:/app/wikipedia/downloads
+      - ./data/qdrant:/app/data/qdrant
+    environment:
+      - PYTHONPATH=/app
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - OLLAMA_URL=http://host.docker.internal:11434
+    depends_on:
+      - qdrant
+    networks:
+      - wikipedia-net
+
+  qdrant:
+    image: qdrant/qdrant:v1.20.0
+    container_name: qdrant
+    ports:
+      - "7333:6333"
+      - "7334:6334"
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+    networks:
+      - wikipedia-net
+
+networks:
+  wikipedia-net:
+    driver: bridge
