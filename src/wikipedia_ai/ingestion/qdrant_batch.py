@@ -110,7 +110,9 @@ def upload_batch(article_title, article_path, chunks, vectors,
             payload=payload,
         ))
 
-    client = QdrantClient(url="http://127.0.0.1:6334")
+    qdrant_host = os.environ.get("QDRANT_HOST", "127.0.0.1")
+    qdrant_port = os.environ.get("QDRANT_PORT", "6334")
+    client = QdrantClient(url=f"http://{qdrant_host}:{qdrant_port}")
 
     client.upsert(
         collection_name=collection,

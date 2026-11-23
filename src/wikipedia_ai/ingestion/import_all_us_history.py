@@ -59,7 +59,6 @@ def import_all_us_history_categories(batch_size=10):
     Args:
         batch_size: Number of articles to process in each batch
     """
-    zim_archive = None
     try:
         # Open the ZIM archive
         logger.info(f"Opening ZIM archive at {ZIM_PATH}")
@@ -123,15 +122,24 @@ def import_all_us_history_categories(batch_size=10):
             if batch_data:
                 try:
                     # Prepare the data for upload with proper parameters
+                    # Flatten chunks and images from all articles in this batch
+                    all_chunks = []
+                    all_images = []
+                    all_titles = []
+                    
+                    for article in batch_data:
+                        all_chunks.extend(article['chunks'])
+                        all_images.extend(article['images'])
+                        all_titles.append(article['title'])
+                    
+                    # Upload the batch with all articles together
                     upload_batch(
-                        article_title=None,  # We're processing multiple articles
-                        article_path=None,   # Not needed for batch uploads
-                        chunks=[chunk for article in batch_data for chunk in article['chunks']],
-                        vectors=None,        # Vectors are generated during upload
-                        collection=None,     # Will use default collection
+                        chunks=all_chunks,
+                        images=all_images,
                         configuration_id=configuration_id,
+                        collection=None,  # Will use default collection
                         generation_id=None,  # Will be set automatically
-                        images=[image for article in batch_data for image in article['images']]
+                        article_titles=all_titles  # Add article titles to help with identification
                     )
                     logger.info(f"Successfully uploaded batch {i//batch_size + 1}")
                 except Exception as e:

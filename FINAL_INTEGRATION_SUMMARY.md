@@ -39,7 +39,7 @@ This project successfully implements a complete Wikipedia AI pipeline that integ
 - `open-webui/vector_db/chroma.sqlite3` - Database with Wikipedia data
 - `src/wikipedia_ai/ingestion/image_extraction.py` - Image processing module
 - `src/wikipedia_ai/ingestion/batched_ingestion.py` - Batched import module
-- `docker-compose-openwebui-fixed.yml` - Docker configuration
+- `docker-compose.yml` - Full-stack Docker configuration
 
 ## Testing Results
 ✅ All integration components tested and working properly

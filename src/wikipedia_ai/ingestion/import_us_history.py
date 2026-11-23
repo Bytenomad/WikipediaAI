@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 
 def get_articles_from_category(zim_archive, category_name):
     """Return direct article members using the shared ZIM category parser."""
+    # Use the correct approach that matches category_utils.py
     return _get_articles_from_category(zim_archive, category_name)
 
 
@@ -108,16 +109,29 @@ def import_us_history_category(category_name, batch_size=10):
             if batch_data:
                 try:
                     # Prepare the data for upload with proper parameters
+                    # The upload_batch function expects a different signature than what was used
+                    # Let's use the correct approach based on how import_category_batch.py works
+                    
+                    # Flatten chunks and images from all articles in this batch
+                    all_chunks = []
+                    all_images = []
+                    all_titles = []
+                    
+                    for article in batch_data:
+                        all_chunks.extend(article['chunks'])
+                        all_images.extend(article['images'])
+                        all_titles.append(article['title'])
+                    
+                    # Upload the batch with all articles together
                     upload_batch(
-                        article_title=None,  # We're processing multiple articles
-                        article_path=None,   # Not needed for batch uploads
-                        chunks=[chunk for article in batch_data for chunk in article['chunks']],
-                        vectors=None,        # Vectors are generated during upload
-                        collection=None,     # Will use default collection
+                        chunks=all_chunks,
+                        images=all_images,
                         configuration_id=configuration_id,
+                        collection=None,  # Will use default collection
                         generation_id=None,  # Will be set automatically
-                        images=[image for article in batch_data for image in article['images']]
+                        article_titles=all_titles  # Add article titles to help with identification
                     )
+                    
                     logger.info(f"Successfully uploaded batch {i//batch_size + 1}")
                 except Exception as e:
                     logger.error(f"Error uploading batch {i//batch_size + 1}: {e}")
@@ -127,6 +141,13 @@ def import_us_history_category(category_name, batch_size=10):
     except Exception as e:
         logger.error(f"Error in import_us_history_category: {e}")
         raise
+    finally:
+        # Ensure archive is closed
+        if zim_archive and hasattr(zim_archive, 'close'):
+            try:
+                zim_archive.close()
+            except Exception as e:
+                logger.error(f"Error closing ZIM archive: {e}")
 
 def main():
     """Main function to run the US history category import."""
@@ -146,7 +167,7 @@ def main():
         logger.info("")
         logger.info("Important: Set ZIM_PATH environment variable to point to your Wikipedia ZIM file")
         return
-        
+         
     category_name = sys.argv[1]
     
     batch_size = 10

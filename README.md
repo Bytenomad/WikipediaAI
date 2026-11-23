@@ -50,8 +50,13 @@ python src/wikipedia_ai/ingestion/import_category_batch.py "Science"
 ### Docker Configuration
 
 ```bash
-docker-compose -f docker-compose-openwebui-fixed.yml up
+docker compose up -d
 ```
+
+The Compose file defaults `WIKIPEDIA_ZIM_DIR` to
+`D:/WikipediaAI/wikipedia/downloads` for this setup. Set that environment
+variable to your host's ZIM directory before starting Compose if it is stored
+elsewhere.
 
 ### Tests
 
