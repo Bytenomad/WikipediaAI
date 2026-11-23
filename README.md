@@ -1,100 +1,126 @@
-# Wikipedia AI Pipeline with Open WebUI Integration
+# Wikipedia AI
 
-This project implements a complete Wikipedia AI pipeline that integrates with Open WebUI for chat functionality, including support for Wikipedia images.
+This project enables importing Wikipedia articles into Qdrant for retrieval-augmented generation (RAG) with support for offline image functionality.
 
-## Overview
+## Features
 
-The system processes Wikipedia articles from ZIM files, creates vector embeddings using Qdrant for storage, and makes the content available to Open WebUI through Chroma database integration. The implementation includes both text and image support from Wikipedia articles.
+- Import Wikipedia articles in batches to manage memory usage
+- Extract and store images locally for offline functionality
+- Integration with Qdrant vector database
+- Integration with Open WebUI for chat interface
+- Support for category-based article imports
 
 ## Architecture
 
 ```
-Wikipedia ZIM → Ingestion Pipeline → Qdrant Vector DB → Open WebUI
-    ↑                                               ↓
-    └── Image Extraction ←─────────────────────────┘
+Wikipedia ZIM → Chunking → Image Extraction → Qdrant Upload → Open WebUI
+     ↑                                    ↓
+     └─ Local Image Storage (./open-webui/uploads/images) 
 ```
 
-## Key Components
+## Setup
 
-### 1. Wikipedia AI Pipeline
-- **Batched Ingestion**: Processes Wikipedia articles from ZIM files in batches
-- **Chunking & Embedding**: Splits content into chunks and generates embeddings
-- **Qdrant Integration**: Stores vector data in Qdrant database
-- **Chroma Compatibility**: Exports data to Chroma format for Open WebUI
-
-### 2. Image Support
-- **Image Extraction Module**: `src/wikipedia_ai/ingestion/image_extraction.py`
-- **Integration**: Processes images from Wikipedia articles during ingestion
-- **Batched Imports**: Handles both text and image content in batch processing
-
-### 3. Open WebUI Integration
-- **Database Connection**: Connects to Chroma database containing Wikipedia data
-- **Docker Configuration**: Properly configured with volume mappings
-- **Version**: Updated to 0.13.4 to resolve update notices
-
-## System Requirements
-
-- Docker and Docker Compose
-- Python 3.8+
-- At least 4GB RAM for optimal performance
-- Internet connection for initial setup
-
-## Setup Instructions
-
-### Prerequisites
-1. Install Docker Desktop
-2. Clone this repository
-3. Download Wikipedia ZIM file to `wikipedia/downloads/`
-
-### Running the System
+1. Install dependencies:
 ```bash
-# Start all containers
-docker-compose -f docker-compose-openwebui-fixed.yml up -d
-
-# Verify containers are running
-docker ps
-
-# Access Open WebUI at http://localhost:8081
+pip install -r requirements.txt
 ```
+
+2. Download the Wikipedia ZIM file to `wikipedia/downloads/` directory
+
+3. Configure Docker with proper volume mounts
 
 ## Usage
 
-1. **Access Open WebUI**: Navigate to http://localhost:8081
-2. **Create Chat Session**: Start a new conversation
-3. **Ask Questions**: Query about Wikipedia topics (e.g., "What is medicine?")
-4. **View Responses**: Both text and image content should display properly
+### Importing Articles
 
-## Key Files
+#### 1. Full Ingestion (All Articles)
+```bash
+python src/wikipedia_ai/ingestion/run_full_ingestion.py
+```
 
-- `docker-compose-openwebui-fixed.yml` - Main Docker configuration
-- `open-webui/vector_db/chroma.sqlite3` - Chroma database with Wikipedia data
-- `src/wikipedia_ai/ingestion/image_extraction.py` - Image processing module
-- `src/wikipedia_ai/ingestion/batched_ingestion.py` - Batched import module
+#### 2. Category-Based Import
+```bash
+# Import articles from a specific category in batches
+python src/wikipedia_ai/ingestion/import_category_batch.py "Medicine" 5
+
+# Import articles from the "Science" category with default batch size
+python src/wikipedia_ai/ingestion/import_category_batch.py "Science"
+```
+
+### Docker Configuration
+
+```bash
+docker-compose -f docker-compose-openwebui-fixed.yml up
+```
+
+### Tests
+
+Automated tests live under `tests/unit`, `tests/integration`, and `tests/`. Older
+service-dependent checks are kept in `tests/manual/` and are excluded from normal
+pytest runs; run those individually from the repository root when their services
+and data are available.
+
+## Key Components
+
+1. **Chunking**: Splits articles into manageable text chunks
+2. **Image Extraction**: Extracts images from Wikipedia articles and saves them locally
+3. **Qdrant Integration**: Stores article chunks with embeddings in Qdrant
+4. **Response Formatting**: Formats responses for Open WebUI display with image references
+5. **Category Import**: New functionality to import specific article categories
+
+## Directory Structure
+
+```
+.
+├── wikipedia/
+│   └── downloads/                 # Wikipedia ZIM files
+├── open-webui/
+│   ├── vector_db/                 # Chroma database
+│   └── uploads/images/            # Local image storage for offline use
+├── data/
+│   └── qdrant/                    # Qdrant data directory
+└── src/
+    └── wikipedia_ai/
+        ├── ingestion/             # Main ingestion scripts
+        │   ├── chunking.py        # Text chunking functionality
+        │   ├── image_extraction.py # Image extraction from HTML
+        │   ├── response_formatter.py # Format responses for Open WebUI
+        │   ├── qdrant_batch.py    # Qdrant batch upload
+        │   ├── run_full_ingestion.py # Main ingestion workflow
+        │   └── import_category_batch.py # Category-based import script
+        └── config.py              # Configuration settings
+```
+
+## Docker Setup
+
+The Docker configuration mounts the necessary directories for:
+- ZIM file access
+- Qdrant data persistence
+- Open WebUI database and uploads
+- Local image storage for offline access
 
 ## Testing
 
-The system has been thoroughly tested and verified:
-- ✅ All integration components working properly
-- ✅ Database connection verified 
-- ✅ Text and image content display confirmed
-- ✅ Open WebUI chat functionality with Wikipedia data
-
-## Performance Features
-
-- **Batched Processing**: Efficient memory usage for large Wikipedia datasets
-- **Scalable Architecture**: Designed to handle extensive Wikipedia content
-- **Optimized Chunking**: Balanced text chunk sizes for optimal search results
+Run tests to verify functionality:
+```bash
+python tests/test_category_import.py
+```
 
 ## Troubleshooting
 
-If you encounter issues:
-1. Check that all Docker containers are running: `docker ps`
-2. Verify database exists: `ls open-webui/vector_db/chroma.sqlite3`
-3. Ensure ZIM file is in the correct location: `wikipedia/downloads/`
+### ZIM Path Issues
 
-## Support
+If you encounter ZIM path issues in Docker, ensure:
+1. The ZIM file is in `wikipedia/downloads/` directory
+2. The Docker volume mounts are correctly configured
+3. Set the `ZIM_PATH` environment variable if needed
 
-For questions or issues, please check the documentation or contact the development team.
+### Image Storage
 
----
-*System ready for use at http://localhost:8081*
+Images are automatically saved to `./open-webui/uploads/images/` and referenced in Qdrant for Open WebUI display.
+
+## Future Work
+
+- Improve category filtering in ZIM file
+- Add support for more Wikipedia content types
+- Implement incremental updates to existing collections

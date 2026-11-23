@@ -66,7 +66,7 @@ def generate_config_instructions():
     print("To complete the Open WebUI setup, follow these steps:")
     print()
     print("1. Run Open WebUI with Docker:")
-    print("   docker-compose -f docker-compose-openwebui.yml up -d")
+    print("   docker-compose -f docker-compose-openwebui-fixed.yml up -d")
     print()
     print("2. Access Open WebUI at: http://localhost:8080")
     print()

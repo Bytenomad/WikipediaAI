@@ -83,7 +83,23 @@ def upload_batch(article_title, article_path, chunks, vectors,
 
         # Add image information if provided
         if images and i < len(images) and images[i]:
-            payload["images"] = images[i] if isinstance(images[i], list) else [images[i]]
+            # Handle local image paths - store them in the payload
+            if isinstance(images[i], list):
+                # If we have a list of images, extract just the local paths for storage
+                local_paths = []
+                for img in images[i]:
+                    if isinstance(img, dict) and 'local_path' in img:
+                        local_paths.append(img['local_path'])
+                    elif isinstance(img, str):
+                        local_paths.append(img)
+                if local_paths:
+                    payload["images"] = local_paths
+            else:
+                # Single image case
+                if isinstance(images[i], dict) and 'local_path' in images[i]:
+                    payload["images"] = [images[i]['local_path']]
+                elif isinstance(images[i], str):
+                    payload["images"] = [images[i]]
         
         if generation_id is not None:
             payload["generation_id"] = generation_id
@@ -94,7 +110,7 @@ def upload_batch(article_title, article_path, chunks, vectors,
             payload=payload,
         ))
 
-    client = QdrantClient(url="http://127.0.0.1:6333")
+    client = QdrantClient(url="http://127.0.0.1:6334")
 
     client.upsert(
         collection_name=collection,

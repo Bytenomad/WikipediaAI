@@ -14,10 +14,9 @@ from bs4 import BeautifulSoup, NavigableString, Tag
 from libzim.reader import Archive
 
 
-# This path should be configurable rather than hardcoded.
-# For now it remains as-is to maintain consistency with original structure.
-# You can override this in your environment or configuration
-ZIM_PATH = Path(r"D:\WikipediaAI\wikipedia\downloads\wikipedia_en_all_maxi_2026-08.zim")
+# Make the ZIM path configurable through environment variable or default to hardcoded path
+import os
+ZIM_PATH = Path(os.environ.get('ZIM_PATH', r"D:\WikipediaAI\wikipedia\downloads\wikipedia_en_all_maxi_2026-08.zim"))
 ARTICLE_TITLE = "Medicine"
 MAX_CHARS = 1500
 
@@ -191,6 +190,19 @@ def make_chunks(records: Iterable[dict[str, str]], maximum: int) -> list[dict[st
         current_length += separator + len(paragraph)
     flush()
     return chunks
+
+
+def chunks_from_html(html_content: str, maximum: int = MAX_CHARS) -> list[dict[str, object]]:
+    """Parse an article's main content and create prose-only chunks."""
+    soup = BeautifulSoup(html_content, "lxml")
+    content = soup.select_one(".mw-parser-output")
+    if content is None:
+        raise ValueError("Could not find .mw-parser-output in article HTML")
+
+    remove_excluded_sections(content)
+    for node in content.select(NON_PROSE_SELECTORS):
+        node.decompose()
+    return make_chunks(eligible_records(content), maximum)
 
 
 def article_html(archive: Archive, title: str) -> str:

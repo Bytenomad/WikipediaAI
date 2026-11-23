@@ -103,6 +103,12 @@ def process_article_batch(archive: Archive, article_titles: list, collection_nam
                         # For now, just match the number of chunks (this is a simplification)
                         batch_images = images[:len(batch_chunks)] if len(images) >= len(batch_chunks) else images + [None] * (len(batch_chunks) - len(images))
                     
+                    # For active collection, we need a generation_id
+                    if collection_name == "wikipedia_articles":
+                        generation_id = "batch_1"
+                    else:
+                        generation_id = None
+                    
                     uploaded_count = upload_batch(
                         article_title=article_title,
                         article_path=f"articles/{article_title}",
@@ -110,6 +116,7 @@ def process_article_batch(archive: Archive, article_titles: list, collection_nam
                         vectors=dummy_vectors,
                         collection=collection_name,
                         configuration_id=configuration_id(),  # Call the function to get the ID
+                        generation_id=generation_id,
                         images=batch_images  # Pass image information along with chunks
                     )
                     upload_count += uploaded_count
@@ -183,12 +190,24 @@ def run_batched_ingestion(article_list_file: str = None, batch_size: int = 50,
         return False
 
 if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Batched Wikipedia ingestion')
+    parser.add_argument('--article-list-file', type=str, help='Path to file containing list of articles (one per line)')
+    parser.add_argument('--batch-size', type=int, default=20, help='Size of batches for processing')
+    parser.add_argument('--collection-name', type=str, default="wikipedia_test_articles", help='Qdrant collection name to use')
+    
+    args = parser.parse_args()
+    
     # Default parameters
-    article_list_file = None  # Set to a file path if you want to specify articles
-    batch_size = 20  # Process 20 articles at a time
-    collection_name = "wikipedia_test_articles"  # Use test collection for this demo
+    article_list_file = args.article_list_file
+    batch_size = args.batch_size
+    collection_name = args.collection_name
     
     print("Starting batched Wikipedia ingestion...")
+    print(f"Article list file: {article_list_file}")
+    print(f"Batch size: {batch_size}")
+    print(f"Collection name: {collection_name}")
     
     try:
         success = run_batched_ingestion(article_list_file, batch_size, collection_name)

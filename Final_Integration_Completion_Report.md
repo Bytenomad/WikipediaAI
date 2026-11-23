@@ -42,7 +42,7 @@ All integration tests passed successfully:
 
 ## Usage Instructions
 
-1. Start the Docker containers with `docker-compose up`
+1. Start the Docker containers with `docker-compose -f docker-compose-openwebui-fixed.yml up -d`
 2. Wait for all services to start (Qdrant, Wikipedia AI pipeline, Open WebUI)
 3. Navigate to http://localhost:8081 in your browser
 4. Create a new chat session 
@@ -50,9 +50,9 @@ All integration tests passed successfully:
 
 ## Configuration Files
 
-- `docker-compose-final.yml` - Main Docker configuration
+- `docker-compose-openwebui-fixed.yml` - Full-stack Docker configuration
 - `open-webui/vector_db/chroma.sqlite3` - Wikipedia data database  
-- `test_openwebui_integration.py` - Integration test script
+- `tests/manual/test_openwebui_integration.py` - Manual integration check
 - `configure_openwebui.py` - Setup verification script
 
 ## Next Steps

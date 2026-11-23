@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   wikipedia-ai:
     build: .
@@ -8,11 +6,15 @@ services:
       - ./wikipedia/downloads:/app/wikipedia/downloads
       - ./data/qdrant:/app/data/qdrant
       - ./open-webui/vector_db:/app/open-webui/vector_db
+      - ./open-webui/uploads/images:/app/open-webui/uploads/images
+      - ./test_zim_file.zim:/app/test_zim_file.zim
     environment:
       - PYTHONPATH=/app
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6334
       - OLLAMA_URL=http://host.docker.internal:11434
+      # Make sure the ZIM path is accessible from within Docker
+      - ZIM_PATH=/app/test_zim_file.zim
     depends_on:
       - qdrant
     networks:

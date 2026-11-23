@@ -75,7 +75,7 @@ The project already includes `.vscode` configuration files:
       "name": "Python: Test Single Article",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/test_single_article.py",
+      "program": "${workspaceFolder}/tests/manual/test_single_article.py",
       "console": "integratedTerminal",
       "justMyCode": true
     },
@@ -83,7 +83,7 @@ The project already includes `.vscode` configuration files:
       "name": "Python: Ingestion Test",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/run_ingestion_test.py",
+      "program": "${workspaceFolder}/tests/manual/run_ingestion_test.py",
       "console": "integratedTerminal",
       "justMyCode": true
     },
@@ -91,7 +91,7 @@ The project already includes `.vscode` configuration files:
       "name": "Python: Comprehensive Pipeline Test",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/test_pipeline_comprehensive.py",
+      "program": "${workspaceFolder}/tests/manual/test_pipeline_comprehensive.py",
       "console": "integratedTerminal",
       "justMyCode": true
     }
@@ -106,7 +106,7 @@ The project already includes `.vscode` configuration files:
    code .
    ```
 
-2. **Set breakpoints** in any Python file (like `test_single_article.py`)
+2. **Set breakpoints** in any Python file (like `tests/manual/test_single_article.py`)
 
 3. **Use the debug dropdown** to select a configuration:
    - Python: Current File
@@ -118,9 +118,9 @@ The project already includes `.vscode` configuration files:
 
 ### 4. Available Test Scripts
 
-- `test_single_article.py` - Single article processing test
-- `run_ingestion_test.py` - Basic ingestion tests  
-- `test_pipeline_comprehensive.py` - Full pipeline test
+- `tests/manual/test_single_article.py` - Single article processing check
+- `tests/manual/run_ingestion_test.py` - Basic ingestion checks
+- `tests/manual/test_pipeline_comprehensive.py` - Full pipeline check
 - `qdrant_to_openwebui_export.py` - Open WebUI integration export
 
 ## Verification
