@@ -12,10 +12,10 @@ import json
 # Add the current directory to the Python path
 sys.path.insert(0, os.path.dirname(__file__))
 
-from qdrant_batch import get_client
+from qdrant_batch import QdrantClient
 from config import configuration_id
 
-def export_from_qdrant(collection_name: str = "wikipedia_articles") -> List[Dict[str, Any]]:
+def export_from_qdrant(collection_name: str = "wikipedia_test_articles") -> List[Dict[str, Any]]:
     """
     Export data from Qdrant collection for Open WebUI compatibility.
     
@@ -28,20 +28,25 @@ def export_from_qdrant(collection_name: str = "wikipedia_articles") -> List[Dict
     print(f"Exporting data from Qdrant collection: {collection_name}")
     
     try:
-        client = get_client()
+        client = QdrantClient(url="http://127.0.0.1:6333")
+        
+        # Check if collection exists first
+        collections = [col.name for col in client.get_collections().collections]
+        if collection_name not in collections:
+            print(f"Collection '{collection_name}' does not exist. Available collections: {collections}")
+            return []
         
         # Get all points from the collection
         points = client.scroll(
             collection_name=collection_name,
-            limit=1000,  # Adjust as needed
+            limit=None,  # Get all points
             with_payload=True,
-            with_vectors=True
+            with_vectors=False
         )
         
         documents = []
         for point in points[0]:  # Points are returned as a tuple (points, next_offset)
             payload = point.payload or {}
-            vector = point.vector
             
             # Convert Qdrant point to Open WebUI format
             document = {
@@ -51,17 +56,16 @@ def export_from_qdrant(collection_name: str = "wikipedia_articles") -> List[Dict
                     "title": payload.get("title", ""),
                     "source": payload.get("source", ""),
                     "collection": collection_name,
-                    "vector": vector
                 }
             }
             
             documents.append(document)
         
-        print(f"✓ Exported {len(documents)} documents from Qdrant")
+        print(f"Exported {len(documents)} documents from Qdrant")
         return documents
         
     except Exception as e:
-        print(f"✗ Error exporting from Qdrant: {e}")
+        print(f"Error exporting from Qdrant: {e}")
         return []
 
 def save_export_to_file(documents: List[Dict[str, Any]], filename: str = "qdrant_export.json"):

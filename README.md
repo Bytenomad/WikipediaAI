@@ -1,28 +1,7 @@
-# Wikipedia AI Pipeline with Open WebUI Integration
+# Wikipedia AI - Local retrieval system with LLM integration
 
-This project demonstrates how to create a Wikipedia AI pipeline that can process articles and integrate with Open WebUI for chatting capabilities.
-
-## Project Structure
-
-```
-WikipediaAI/
-├── src/
-│   └── wikipedia_ai/
-│       └── ingestion/
-│           ├── article_ingestion.py      # Main ingestion logic
-│           ├── qdrant_batch.py           # Qdrant upload functionality
-│           ├── config.py                 # Configuration handling
-│           ├── target.py                 # Collection targeting
-│           └── ...                       # Other supporting modules
-├── open-webui/                           # Open WebUI directory
-│   └── vector_db/
-│       └── chroma.sqlite3                # Chroma database used by Open WebUI
-├── test_single_article.py                # Test script for single article processing
-├── run_single_test.py                    # Run test script
-├── qdrant_to_openwebui_export.py         # Export data from Qdrant to Open WebUI format
-├── test_pipeline_comprehensive.py        # Comprehensive pipeline testing
-└── open_webui_integration.md             # Integration documentation
-```
+A structured Python project for processing Wikipedia content using offline 
+ZIM archives, local embeddings (Ollama), and vector storage (Qdrant).
 
 ## System Overview
 
@@ -37,101 +16,88 @@ WikipediaAI/
 - Our pipeline uses Qdrant for storage
 - Bridge created through data export functionality
 
-## Key Components
-
-### 1. Ingestion Pipeline
-The main ingestion logic is in `src/wikipedia_ai/ingestion/article_ingestion.py`. It handles:
-- Reading from ZIM archives (simulated for testing)
-- Content extraction and chunking
-- Embedding generation 
-- Upload to Qdrant
-
-### 2. Qdrant Integration
-Data is stored in Qdrant collections:
-- `wikipedia_articles` (ACTIVE_COLLECTION) - For production data
-- `wikipedia_test_articles` (TEST_COLLECTION) - For testing data
-
-### 3. Open WebUI Compatibility
-The integration solution includes:
-- Data export script (`qdrant_to_openwebui_export.py`) to bridge Qdrant and Chroma
-- Configuration documentation for Open WebUI setup
-
-## Testing the Pipeline
+## Getting Started
 
 ### Prerequisites
-1. Qdrant server running on `http://127.0.0.1:6333`
-2. Open WebUI running with Chroma database
-3. Python dependencies installed (qdrant-client, wikipedia-api, etc.)
+1. **Python 3.13** (or higher)
+2. **Qdrant server** running on `http://127.0.0.1:6333`
+3. **Ollama** for embedding generation
+4. **ZIM archive** of Wikipedia content (download from https://download.kiwix.org/zim/wikipedia/)
 
-### Test Steps
+### Installation
 
-1. **Run the ingestion test**:
-   ```bash
-   python run_ingestion_test.py
-   ```
-
-2. **Test the complete pipeline**:
-   ```bash
-   python test_pipeline_comprehensive.py
-   ```
-
-3. **Export data for Open WebUI**:
-   ```bash
-   python qdrant_to_openwebui_export.py
-   ```
-
-## Integration with Open WebUI
-
-### Approach 1: Direct Qdrant Connection (Recommended)
-Modify Open WebUI's configuration to point directly to your Qdrant instance instead of Chroma.
-
-### Approach 2: Data Export and Import
-Use the export script to convert Qdrant data to a format compatible with Chroma, then import it into Open WebUI.
-
-## Configuration
-
-The system uses configuration IDs generated from:
-- ZIM file details
-- Collection names  
-- Embedding model settings
-- Vector dimensions
-
-These ensure deterministic and reproducible ingestion processes.
-
-## Troubleshooting
-
-### Common Issues
-1. **Qdrant Connection Errors**: Ensure Qdrant server is running on port 6333
-2. **Import Errors**: Make sure all Python dependencies are installed
-3. **Database Compatibility**: The export script bridges the gap between Qdrant and Chroma formats
-
-### Testing Commands
 ```bash
-# Test basic functionality
-python run_ingestion_test.py
+# Clone repository
+git clone <repository-url>
+cd WikipediaAI
 
-# Run comprehensive tests
-python test_pipeline_comprehensive.py
+# Create virtual environment (recommended)
+python -m venv .venv
 
-# Export data for Open WebUI
-python qdrant_to_openwebui_export.py
+# Activate virtual environment
+# On Windows:
+.venv\\Scripts\\activate
+# On Linux/Mac:
+source .venv/bin/activate
+
+# Install package in development mode
+pip install -e .
 ```
 
-## Future Enhancements
+### Running Tests
 
-1. **Direct Chroma Integration**: Modify the pipeline to store directly in Chroma
-2. **Real-time Sync**: Implement real-time synchronization between Qdrant and Chroma
-3. **Improved Error Handling**: More robust error handling and logging
-4. **Performance Optimization**: Optimize batch processing for larger datasets
+```bash
+# Run single article test
+python test_single_article.py
 
-## Contributing
+# Run ingestion tests
+python run_ingestion_test.py
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+# Run comprehensive pipeline test
+python test_pipeline_comprehensive.py
+```
 
-## License
+### Project Structure
 
-This project is licensed under the MIT License.
+```
+WikipediaAI/
+├── src/
+│   └── wikipedia_ai/
+│       └── ingestion/      # Main pipeline code
+├── test_single_article.py   # Single article test
+├── run_ingestion_test.py    # Ingestion test runner
+├── test_pipeline_comprehensive.py  # Full pipeline test
+└── pyproject.toml           # Project configuration
+```
+
+## Development Setup
+
+This project is ready for development and debugging in Visual Studio Code. For detailed setup instructions, see [VS_CODE_SETUP.md](VS_CODE_SETUP.md).
+
+### VS Code Debugging Configuration
+
+To debug the Wikipedia AI pipeline in VS Code:
+
+1. **Open the project in VS Code**
+   ```bash
+   code .
+   ```
+
+2. **Install dependencies** (if not already done):
+   ```bash
+   # Activate virtual environment
+   .venv\\Scripts\\activate  # Windows
+   # or
+   source .venv/bin/activate  # Linux/Mac
+   
+   # Install project in development mode
+   pip install -e .
+   ```
+
+3. **Debug configurations are available** in the `.vscode/launch.json` file
+   - Debug current Python file
+   - Debug single article test
+   - Debug ingestion tests
+   - Debug comprehensive pipeline test
+
+4. **Set breakpoints** and use F5 to start debugging

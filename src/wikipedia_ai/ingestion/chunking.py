@@ -16,6 +16,7 @@ from libzim.reader import Archive
 
 # This path should be configurable rather than hardcoded.
 # For now it remains as-is to maintain consistency with original structure.
+# You can override this in your environment or configuration
 ZIM_PATH = Path(r"D:\WikipediaAI\wikipedia\downloads\wikipedia_en_all_maxi_2026-08.zim")
 ARTICLE_TITLE = "Medicine"
 MAX_CHARS = 1500

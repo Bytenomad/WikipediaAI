@@ -24,16 +24,16 @@ def test_single_article():
     
     try:
         result = ingest_article(test_title)
-        print(f"✓ Article ingestion completed: {result}")
+        print(f"[SUCCESS] Article ingestion completed: {result}")
         
         # Test configuration ID generation
         config_id = configuration_id()
-        print(f"✓ Configuration ID generated: {config_id}")
+        print(f"[SUCCESS] Configuration ID generated: {config_id}")
         
         return True
         
     except Exception as e:
-        print(f"✗ Error during single article test: {e}")
+        print(f"[ERROR] Error during single article test: {e}")
         return False
 
 def test_qdrant_export():
@@ -42,16 +42,16 @@ def test_qdrant_export():
     
     try:
         # Test that we can import and use the Qdrant export functionality
-        from wikipedia_ai.ingestion.qdrant_batch import get_client, upload_batch
+        from qdrant_batch import QdrantClient, upload_batch
         
-        # Check if we can connect to Qdrant
-        client = get_client()
-        print("✓ Connected to Qdrant successfully")
+        # Check if we can connect to Qdrant - we'll use a direct client instead of get_client
+        client = QdrantClient(url="http://127.0.0.1:6333")
+        print("Connected to Qdrant successfully")
         
         return True
         
     except Exception as e:
-        print(f"✗ Error during Qdrant export test: {e}")
+        print(f"Error during Qdrant export test: {e}")
         return False
 
 def main():
@@ -69,10 +69,10 @@ def main():
         success = False
     
     if success:
-        print("\n✓ All tests passed!")
+        print("\n[SUCCESS] All tests passed!")
         return 0
     else:
-        print("\n✗ Some tests failed!")
+        print("\n[FAILED] Some tests failed!")
         return 1
 
 if __name__ == "__main__":
