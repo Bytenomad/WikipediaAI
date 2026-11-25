@@ -1,4 +1,4 @@
-FROM ghcr.io/open-webui/open-webui:main
+FROM ghcr.io/open-webui/open-webui:0.13.5
 
 # Create directories with proper permissions
 RUN mkdir -p /app/vector_db /app/uploads && \

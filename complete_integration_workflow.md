@@ -106,7 +106,7 @@ docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
 
 2. **Run the full workflow**:
 ```bash
-cd C:\Users\Main\source\repos\WikipediaAI
+cd D:\source\repos\WikipediaAI
 python complete_integration_workflow.py
 ```
 

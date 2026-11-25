@@ -29,7 +29,7 @@ docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
 
 ### 2.1 Run Full Ingestion Process
 ```bash
-cd C:\Users\Main\source\repos\WikipediaAI
+cd D:\source\repos\WikipediaAI
 python run_full_ingestion.py
 ```
 
