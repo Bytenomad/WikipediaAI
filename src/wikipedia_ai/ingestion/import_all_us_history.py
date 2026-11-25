@@ -22,10 +22,13 @@ from wikipedia_ai.ingestion.chunking import (
     article_html,
     chunks_from_html,
 )
-from wikipedia_ai.ingestion.qdrant_batch import upload_batch
 from wikipedia_ai.ingestion.config import configuration_id
 from wikipedia_ai.ingestion.target import ACTIVE_COLLECTION, TEST_COLLECTION
-from wikipedia_ai.ingestion.batch_embeddings import embed_batch
+from wikipedia_ai.ingestion.services.embedding_service import OllamaEmbeddingService
+from wikipedia_ai.ingestion.services.qdrant_service import QdrantService, VectorRecord
+from wikipedia_ai.ingestion.services.qdrant_impl import QdrantServiceImpl
+from wikipedia_ai.ingestion.config_manager import ConfigManager
+
 import json
 
 # Import image extraction functionality
@@ -49,6 +52,10 @@ US_HISTORY_CATEGORIES = [
     "American Revolution"
 ]
 
+# Initialize configuration manager
+config_manager = ConfigManager()
+config = config_manager.get_config()
+
 def get_articles_from_category(zim_archive, category_name):
     """Return direct article members using the shared ZIM category parser."""
     return _get_articles_from_category(zim_archive, category_name)
@@ -65,6 +72,13 @@ def import_all_us_history_categories(batch_size=10):
         # Open the ZIM archive
         logger.info(f"Opening ZIM archive at {ZIM_PATH}")
         zim_archive = Archive(ZIM_PATH)
+        
+        # Initialize services with configuration
+        embedding_service = OllamaEmbeddingService(
+            model_name=config.embedding_model,
+            base_url="http://localhost:11434"
+        )
+        qdrant_service = QdrantServiceImpl()
         
         all_articles = []
         
@@ -124,40 +138,88 @@ def import_all_us_history_categories(batch_size=10):
             if batch_data:
                 try:
                     for article in batch_data:
-                        # Generate embeddings for chunks
-                        vectors = embed_batch([chunk['text'] for chunk in article['chunks']])
+                        # Generate embeddings for chunks using our abstract service
+                        texts = [chunk['text'] for chunk in article['chunks']]
+                        vectors = embedding_service.generate_embeddings(texts)
                         
                         logger.debug(f"About to upload article: {article['title']}")
                         logger.debug(f"Article title type: {type(article['title'])}")
                         logger.debug(f"Article chunks length: {len(article['chunks'])}")
                         logger.debug(f"Vectors length: {len(vectors)}")
                         
-                        # Process chunks in smaller batches to avoid exceeding BATCH_SIZE limit
+                        # Process chunks in smaller batches to match Qdrant's BATCH_SIZE limit
                         CHUNK_BATCH_SIZE = 32
                         article_images = article['images']  # Store images once
-                        for i in range(0, len(article['chunks']), CHUNK_BATCH_SIZE):
-                            batch_chunks = article['chunks'][i:i + CHUNK_BATCH_SIZE]
-                            batch_vectors = vectors[i:i + CHUNK_BATCH_SIZE]
+                        for j in range(0, len(article['chunks']), CHUNK_BATCH_SIZE):
+                            batch_chunks = article['chunks'][j:j + CHUNK_BATCH_SIZE]
+                            batch_vectors = vectors[j:j + CHUNK_BATCH_SIZE]
                             
                             # Ensure we have the same number of chunks and vectors
                             if len(batch_chunks) != len(batch_vectors):
                                 raise ValueError("Mismatch between chunks and vectors in batch")
                                 
-                            upload_batch(
-                                article_title=article['title'],
-                                article_path=str(article['title']),  # Using title as path for single article, ensure it's a string
-                                chunks=batch_chunks,
-                                vectors=batch_vectors,        # Pass generated vectors
-                                images=article_images if i == 0 else None,  # Only pass images once
-                                configuration_id=configuration_id(),  # Call the function to get the ID
-                                collection=TEST_COLLECTION,  # Use TEST_COLLECTION for import
-                                generation_id=None,  # Will be set automatically
+                            # Prepare VectorRecord objects for upload to Qdrant service
+                            records = []
+                            for k, (chunk, vector) in enumerate(zip(batch_chunks, batch_vectors)):
+                                # Create a unique point ID based on chunk index within article
+                                point_id = str(hash(f"{article['title']}_{j}_{k}"))
+                                
+                                payload = {
+                                    "title": article['title'],
+                                    "article_path": str(article['title']),
+                                    "section": chunk["section"],
+                                    "chunk_index": int(chunk["chunk_index"]),
+                                    "text": chunk["text"],
+                                    "source": "wikipedia",
+                                    "embedding_model": config.embedding_model,
+                                    "configuration_id": configuration_id(),
+                                    "kiwix_url": (
+                                        "http://127.0.0.1:8080/content/"
+                                        "wikipedia_en_all_maxi_2026-08/"
+                                        + str(article['title']).replace("/", "%2F")
+                                    ),
+                                }
+                                
+                                # Add image information if provided (only for first batch to avoid duplication)
+                                if article_images and j == 0:
+                                    # Extract local paths from image dictionaries with proper handling of different structures
+                                    images_paths = []
+                                    if isinstance(article_images[k], list):
+                                        # List of images: extract all the local paths
+                                        for img in article_images[k]:
+                                            if isinstance(img, dict) and 'local_path' in img:
+                                                images_paths.append(img['local_path'])
+                                            elif isinstance(img, str):
+                                                images_paths.append(img)
+                                    elif isinstance(article_images[k], dict) and 'local_path' in article_images[k]:
+                                        # Single image dictionary with local path
+                                        images_paths.append(article_images[k]['local_path'])
+                                    elif isinstance(article_images[k], str):
+                                        # Single string path (simple case)
+                                        images_paths.append(article_images[k])
+                                    
+                                    if images_paths:
+                                        payload["images"] = images_paths
+                                
+                                # Create the VectorRecord object to be uploaded
+                                record = VectorRecord(
+                                    id=point_id,
+                                    vector=vector,
+                                    metadata={},
+                                    payload=payload
+                                )
+                                records.append(record)
+                            
+                            # Upload using Qdrant service abstraction
+                            qdrant_service.upload_batch(
+                                collection_name=TEST_COLLECTION,
+                                records=records
                             )
                     logger.info(f"Successfully uploaded batch {i//batch_size + 1}")
                 except Exception as e:
                     logger.error(f"Error uploading batch {i//batch_size + 1}: {e}")
                     raise  # Re-raise the exception to see full traceback
-            
+             
         logger.info("Completed import of all US history categories")
         
     except Exception as e:
